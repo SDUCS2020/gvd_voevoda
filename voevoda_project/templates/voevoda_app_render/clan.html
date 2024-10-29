@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% load static %} 
+{% block content %}
+        <!--
+                {{clan_id}} в данной переменной
+                1)Делаем запрос для получения данных клана
+                        url: http://127.0.0.1:8000/api/clans/
+                        type: GET
+                        params: clan_id={{ clan_id }}
+
+                        ОТВЕТ:
+                        data: {
+                                "id": Целочисленное значение,
+                                "name": Строковое значение,
+                                "label": url адрес гифки, которую нужно отрендерить + под гифку спрятать ссылку https://www.heroeswm.ru/clan_info.php?id=[ID из поля выше],
+                                "alliance": null или {
+                                        "id": Целочисленное значение,
+                                        "name": Строковое значение,
+                                        "label": url адрес гифки, которую нужно отрендерить + под гифку спрятать ссылку https://www.heroeswm.ru/clan_info.php?id=[ID из поля выше]
+                                 }
+                        }
+                 2)Запрашиваем список всех игроков данного клана
+                        url: http://127.0.0.1:8000/api/players/
+                        type: GET
+                        params: clan_id={{ clan_id }}
+
+                        ОТВЕТ:
+                        data: [
+                                {
+                                    "id": целочисленное значение,
+                                    "name": строковое значение, спрятать ссылку https://www.heroeswm.ru/pl_info.php?id=[ID из поля выше],
+                                    "level": целочисленное значение,
+                                    "clan": целочисленное значение, - его отображать не нужно
+                                    "umka_knight": целочисленное значение,
+                                    "umka_necro": целочисленное значение,
+                                    "umka_mag": целочисленное значение,
+                                    "umka_elf": целочисленное значение,
+                                    "umka_barbar": целочисленное значение,
+                                    "umka_black_elf": целочисленное значение,
+                                    "umka_demon": целочисленное значение,
+                                    "umka_dwarf": целочисленное значение,
+                                    "umka_step_barb": целочисленное значение,
+                                    "umka_pharaon": целочисленное значение,
+                                    "gild_hunt": целочисленное значение,
+                                    "gild_work": целочисленное значение,
+                                    "gild_card": целочисленное значение,
+                                    "gild_thief": целочисленное значение,
+                                    "gild_ranger": целочисленное значение,
+                                    "gild_mers": целочисленное значение,
+                                    "gild_tactic": целочисленное значение,
+                                    "gild_gard": целочисленное значение,
+                                    "gild_seekers": целочисленное значение,
+                                    "gild_leader": целочисленное значение,
+                                    "gild_blacksmith": целочисленное значение,
+                                    "gild_gunsmith": целочисленное значение
+                                    "person_id": целочисленное значение (мы смотрим на переменную {{ my }}. Если она true
+                                    и person_id == null, то делаем кнопку "ПРИГЛАСИТЬ"
+                                    при нажатии на кнопку "ПРИГЛАСИТЬ" отправляем запрос
+                                        url = "http://127.0.0.1:8000/api/keys/"
+                                        type: GET
+                                        params = {
+                                                "sub_key": "person",
+                                                "role": 100,
+                                                "player_id": "id",
+                                                "voevoda_id": request.session.voevoda_id
+                                        }
+
+                                        ОТВЕТ:
+                                        в data прийдет 6-значный код, который нужно вывести на экран
+
+                                    если значение person_id,
+                                    то там ссылка, которая ведет на "{% url 'player' %}?player_id=4"
+
+                                    если же переменная {{ my }} равна false, то ничего не делаем
+
+                                },
+                        ]
+                        Рендерим данные о клане. Рендерим кол-во игроков. Рендерим таблицу с игроками и фильтруем по убывания по
+                        переменной level
+        -->
+        <script>
+        const my = {{ my|lower }};
+        const clanId = {{ clan_id }};
+        let clanData = null;
+        let playersData = [];
+
+        fetch(`http://127.0.0.1:8000/api/clans/?clan_id=${clanId}`)
+        .then(response => response.json())
+        .then(data => {
+            clanData = data.data;
+            renderClanData();
+        })
+        .catch(error => console.error('Ошибка получения данных клана:', error));
+
+        fetch(`http://127.0.0.1:8000/api/players/?clan_id=${clanId}`)
+        .then(response => response.json())
+        .then(data => {
+        console.log('Ответ API для игроков:', data);
+        if (data.success && Array.isArray(data.data)) { 
+                let playersData = data.data.sort((a, b) => b.level - a.level);  
+                document.querySelector('#player-count').textContent = `Количество игроков: ${playersData.length}`;
+                renderPlayersTable(playersData, my); 
+        } else {
+                console.error('Ожидался массив данных игроков, но получен другой тип данных или ошибка');
+        }
+        })
+        .catch(error => console.error('Ошибка получения данных игроков:', error));
+
+        function renderClanData() {
+            if (clanData) {
+                const clanSection = document.getElementById('clan-info');
+                const alliance = clanData.alliance ? `
+                    <div>Союз: <a href="https://www.heroeswm.ru/clan_info.php?id=${clanData.alliance.id}">
+                    <img src="${clanData.alliance.label}" alt="${clanData.alliance.name}"/></a></div>` : '';
+                clanSection.innerHTML = `
+                    <h2>${clanData.name}<a href="https://www.heroeswm.ru/clan_info.php?id=${clanData.id}">
+                        <img src="${clanData.label}" alt="${clanData.name}"></a></h2>
+                    
+                    
+                    ${alliance}
+                `;
+            }
+        }
+
+        function renderPlayersTable(playersData, my) {
+            console.log(my);
+            const playersTable = document.getElementById('players-table');
+            playersTable.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Имя</th>
+                        <th>Уровень</th>
+                        <th>Фракции</th>
+                        <th>Гильдии</th>
+                        <th>Действие</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${playersData.map(player => `
+                        <tr>
+                                <td><a href="https://www.heroeswm.ru/pl_info.php?id=${player.id}" target="_blank">${player.name}</a></td>
+                                <td>${player.level}</td>
+                                <td>
+                                Рыцарь: ${player.umka_knight}, Некромант: ${player.umka_necro}, Маг: ${player.umka_mag},
+                                Эльф: ${player.umka_elf}, Варвар: ${player.umka_barbar}, Тёмный эльф: ${player.umka_black_elf},
+                                Демон: ${player.umka_demon}, Гном: ${player.umka_dwarf}, Степной варвар: ${player.umka_step_barb},
+                                Фараон: ${player.umka_pharaon}
+                                </td>
+                                <td>
+                                Охотник: ${player.gild_hunt}, Работяга: ${player.gild_work}, Карточник: ${player.gild_card},
+                                Вор: ${player.gild_thief}, Следопыт: ${player.gild_ranger}, Наёмник: ${player.gild_mers},
+                                Тактик: ${player.gild_tactic}, Страж: ${player.gild_gard}, Искатель: ${player.gild_seekers},
+                                Лидер: ${player.gild_leader}, Кузнец: ${player.gild_blacksmith}, Пушечник: ${player.gild_gunsmith}
+                                </td>
+                                <td>
+                                ${player.person_id == null && my ? 
+                                        `<button class="invite-btn" data-player-id="${player.id}">Пригласить</button>` : ''}
+                                ${player.person_id != null ? 
+                                        `<a href="{% url 'player' %}?player_id=${player.person_id}">Просмотреть</a>` : ''}
+                                </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        }
+
+        document.addEventListener('click', function (event) {
+            if (event.target.classList.contains('invite-btn')) {
+                const playerId = event.target.getAttribute('data-player-id');
+                const voevodaId = "{{ request.session.voevoda_id }}";
+                fetch(`http://127.0.0.1:8000/api/keys/?sub_key=person&role=100&player_id=${playerId}&voevoda_id=${voevodaId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data) {
+                        alert(`Пригласительный код: ${data.data}`);
+                    } else {
+                        alert('Не удалось получить код приглашения.');
+                    }
+                })
+                .catch(error => console.error('Ошибка получения ключа:', error));
+            }
+        });
+    </script>
+    <div class="sh_MenuPanel" style="width: 10px;">
+        <div class="mm_l"></div>
+        <div class="mm_r"></div>
+        <a href="{% url 'main' %}">
+            <img src="{% static 'voevoda_app/images/arrow.png' %}" href="{% url 'main' %}" class="cursor_main_menu">
+        </a>
+        <div class="main_menu" hwm_label=""><a href="{% url 'main' %}">Главное меню</a></div>
+        <div class="not_auth_text_on_buttons2">Клан</div>
+    </div>
+
+    <div class="content-wrapper">
+            <div id="clan-info"></div>
+        
+        <h3 style="position:relative; top:-20px; text-shadow: 1px 1px 5px #000;">Игроки</h3>
+        <div id="player-count" style="position:relative; top:-20px; text-shadow: 1px 1px 5px #000;">Количество игроков: 0</div>
+        
+        <div class="players-table-wrapper">
+            <table id="players-table" class="players-table">
+                <!-- Таблица игроков будет динамически рендериться здесь -->
+            </table>
+        </div>
+    </div>
+{% endblock %}
