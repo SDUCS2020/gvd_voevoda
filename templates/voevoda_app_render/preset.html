@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load static %} 
+        <!--
+                Делаем форму
+                fraction -    (0, "Рыцарь"),
+                              (1, "Некромант"),
+                              (2, "Маг"),
+                              (3, "Эльф"),
+                              (4, "Варвар"),
+                              (5, "Темный эльф"),
+                              (6, "Демон"),
+                              (7, "Гном"),
+                              (8, "Степной варвар"),
+                              (9, "Фараон"), - нужно из числового значения отрендерить строку
+                name - строковое поле
+                description - большое строковое поле
+
+                {{ preset_data }} переменная будет содержать значения (если она пустая то форму оставляем пустой
+
+                Добавляем кнопки (СОХРАНИТЬ в случае если изначально данных не было и ОБНОВИТЬ если были) и (УДАЛИТЬ если изначально данные были)
+
+                При нажатии на кнопку (УДАЛИТЬ) - посылается запрос
+                url: http://127.0.0.1:8000/api/presets/
+                type: DELETE
+                params: preset_id={{ preset_data.id }}
+
+                И выпрыгиваем не предыдущую страницу
+
+                При нажатии на кнопку СОХРАНИТЬ - отправляем запрос
+                url: http://127.0.0.1:8000/api/presets/
+                type: POST
+                body: {
+                        voevoda_id = request.session.voevoda_id,
+                        fraction = то что выбрал пользователь
+                        name = то что ввел пользователь
+                        description = то что ввел пользователь
+                }
+
+                И выпрыгиваем не предыдущую страницу
+
+                При нажатии на кнопку ОБНОВИТЬ - отправляем запрос
+                url: http://127.0.0.1:8000/api/presets/
+                type: PATCH
+                body: {
+                        preset_id = {{ preset_data.id }},
+                        fraction = то что выбрал пользователь
+                        name = то что ввел пользователь
+                        description = то что ввел пользователь
+                }
+
+                И выпрыгиваем не предыдущую страницу
+        -->
+
+{% block content %}
+
+-->
+<div class="sh_MenuPanel" style="width: 10px;">
+    <div class="mm_l"></div>
+    <div class="mm_r"></div>
+    <a href="{% url 'main' %}">
+        <img src="{% static 'voevoda_app/images/arrow.png' %}" href="{% url 'main' %}" class="cursor_main_menu">
+    </a>
+    <div class="main_menu" hwm_label=""><a href="{% url 'presents' %}">Пресеты</a></div>
+    <div class="not_auth_text_on_buttons2">Добавить пресет</div>
+</div>
+<div class="content-container">
+    <h2 class="rpg-title">Настройки пресетов</h2>
+    
+    <form id="preset-form" class="rpg-form">
+        <label for="fraction">Фракция:</label>
+        <select id="fraction" name="fraction" class="rpg-select">
+            <option value="0" {% if preset_data and preset_data.fraction == 0 %}selected{% endif %}>🛡️ Рыцарь</option>
+            <option value="1" {% if preset_data and preset_data.fraction == 1 %}selected{% endif %}>💀 Некромант</option>
+            <option value="2" {% if preset_data and preset_data.fraction == 2 %}selected{% endif %}>🔮 Маг</option>
+            <option value="3" {% if preset_data and preset_data.fraction == 3 %}selected{% endif %}>🌲 Эльф</option>
+            <option value="4" {% if preset_data and preset_data.fraction == 4 %}selected{% endif %}>⚔️ Варвар</option>
+            <option value="5" {% if preset_data and preset_data.fraction == 5 %}selected{% endif %}>🌑 Темный эльф</option>
+            <option value="6" {% if preset_data and preset_data.fraction == 6 %}selected{% endif %}>🔥 Демон</option>
+            <option value="7" {% if preset_data and preset_data.fraction == 7 %}selected{% endif %}>⛏️ Гном</option>
+            <option value="8" {% if preset_data and preset_data.fraction == 8 %}selected{% endif %}>🏜️ Степной варвар</option>
+            <option value="9" {% if preset_data and preset_data.fraction == 9 %}selected{% endif %}>🔆 Фараон</option>
+        </select>
+
+        <label for="name">Название:</label>
+        <input type="text" id="name" name="name" class="rpg-input" placeholder="Введите название..." value="{% if preset_data %}{{ preset_data.name }}{% endif %}">
+
+        <label for="description">Описание:</label>
+        <textarea id="description" name="description" class="rpg-textarea" placeholder="Описание пресета...">{% if preset_data %}{{ preset_data.description }}{% endif %}</textarea>
+
+        <div class="button-container">
+            {% if preset_data %}
+                <button type="button" id="update-btn" class="add-preset-button">💾 Обновить</button>
+                <button type="button" id="delete-btn" class="add-preset-button">🗑️ Удалить</button>
+            {% else %}
+                <button type="button" id="save-btn" class="add-preset-button">💾 Сохранить</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+    const voevodaId = "{{ request.session.voevoda_id }}";
+    const presetId = {% if preset_data %}{{ preset_data.id }}{% else %}null{% endif %};
+
+    function redirectToPresets() {
+        window.location.href = "{% url 'presents' %}";
+    }
+
+    document.getElementById('save-btn')?.addEventListener('click', function () {
+        const data = {
+            voevoda_id: voevodaId,
+            fraction: document.getElementById('fraction').value,
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value
+        };
+
+        fetch('http://127.0.0.1:8000/api/presets/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                redirectToPresets();
+            } else {
+                console.error('Ошибка при сохранении пресета');
+            }
+        })
+        .catch(error => console.error('Ошибка:', error));
+    });
+
+    document.getElementById('update-btn')?.addEventListener('click', function () {
+        const data = {
+            preset_id: presetId,
+            fraction: document.getElementById('fraction').value,
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value
+        };
+
+        fetch('http://127.0.0.1:8000/api/presets/', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                redirectToPresets();
+            } else {
+                console.error('Ошибка при обновлении пресета');
+            }
+        })
+        .catch(error => console.error('Ошибка:', error));
+    });
+
+    document.getElementById('delete-btn')?.addEventListener('click', function () {
+        fetch(`http://127.0.0.1:8000/api/presets/?preset_id=${presetId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                redirectToPresets();
+            } else {
+                console.error('Ошибка при удалении пресета');
+            }
+        })
+        .catch(error => console.error('Ошибка:', error));
+    });
+</script>
+
+{% endblock %}
